@@ -1,0 +1,104 @@
+'''
+The purpose of this program is to show a realistic and dynamic depiction of vortex interaction 
+
+@author: Daniel Ha
+@collab: None :(
+2024-02-14
+'''
+
+import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')  
+import matplotlib.pyplot as plt
+
+# Parameters
+dt = 0.01
+Nsteps = 1000
+ngrid = 200  # Increase/decrease the dimension of the simulation grid for better visibility
+r_mask = 0.1  # Increase/decrease the radius of the mask around the vortex centers
+
+# Create figure/axis
+plt.ion()
+fig, ax = plt.subplots(1, 1)
+
+# Set up the boundaries of the simulation box
+ax.set_xlim([-ngrid, ngrid])
+ax.set_ylim([-ngrid, ngrid])
+
+# Initial conditions
+x_v = np.array([-13, 4, -2, 7])  # x-positions of the 4 vortices
+y_v = np.array([-14, -5, 6, 10])  # y-positions of the 4 vortices
+k_v = np.array([5, -2, 4, -3])  # line vortex constant k of the 4 vortices
+
+# Mark the initial positions of vortices
+p, = ax.plot(x_v, y_v, 'k+', markersize=5) 
+
+# Draw the initial velocity streamline
+Y, X = np.mgrid[-ngrid:ngrid:360j, -ngrid:ngrid:360j]
+vel_x = np.zeros(np.shape(Y))
+vel_y = np.zeros(np.shape(Y))
+
+# Calculating the velocity field
+# A transformation from polar -> cartesian coordinates was done
+for i in range(len(x_v)):
+    for j in range(len(x_v)):
+        if i != j:
+            x_rel = X - x_v[j]
+            y_rel = Y - y_v[j]
+            r_rel = np.sqrt(x_rel**2 + y_rel**2)
+            vel_x += k_v[j] * y_rel / (r_rel**2)
+            vel_y += -k_v[j] * x_rel / (r_rel**2)
+
+# Masking
+for i in range(len(x_v)):
+    mask = np.sqrt((X - x_v[i])**2 + (Y - y_v[i])**2) < r_mask
+    vel_x[mask] = np.nan
+    vel_y[mask] = np.nan
+
+# Plot the initial velocity streamline
+# I had to set arrow size to 0 because it looks very messy otherwise
+ax.streamplot(X, Y, vel_x, vel_y, arrowsize=0, density=[1, 1])
+
+# Evolution
+count = 0
+while count < Nsteps:
+    # Compute and update advection velocity
+    vel_x = np.zeros(np.shape(Y))
+    vel_y = np.zeros(np.shape(Y))
+    for i in range(len(x_v)):
+        for j in range(len(x_v)):
+            if i != j:
+                x_rel = X - x_v[j]
+                y_rel = Y - y_v[j]
+                r_rel = np.sqrt(x_rel**2 + y_rel**2)
+                vel_x += k_v[j] * y_rel / (r_rel**2)
+                vel_y += -k_v[j] * x_rel / (r_rel**2)
+
+    x_v = x_v + np.sum(vel_x * dt, axis=(0, 1))
+    y_v = y_v + np.sum(vel_y * dt, axis=(0, 1))
+
+    for i in range(len(x_v)):
+        for j in range(len(x_v)):
+            if i != j:
+                x_rel = X - x_v[j]
+                y_rel = Y - y_v[j]
+                r_rel = np.sqrt(x_rel**2 + y_rel**2)
+                vel_x += k_v[j] * y_rel / (r_rel**2)
+                vel_y += -k_v[j] * x_rel / (r_rel**2)
+
+        mask = np.sqrt((X - x_v[i])**2 + (Y - y_v[i])**2) < r_mask
+        vel_x[mask] = np.nan
+        vel_y[mask] = np.nan
+
+    # Update plot
+    p.set_xdata(x_v)
+    p.set_ydata(y_v)
+
+    for coll in ax.collections:
+        coll.remove()
+
+    ax.streamplot(X, Y, vel_x, vel_y, arrowsize=0, density=[1, 1])
+
+    plt.draw()
+    plt.pause(0.005)
+    count += 1
