@@ -1,7 +1,9 @@
 """
-Created on Thu Jan 25 16:04:23 2024
+Numerical Analysis on Lava Flowing Down Incline
 
-@author: hadan
+@author: Daniel Ha
+@collab: None
+2024-02-26
 """
 
 # Modules
@@ -20,7 +22,7 @@ theta = np.pi / 6  # Slope angle
 dt = 0.001  # Time step size
 H = 1.0  # Thickness of the lava layer
 
-x = np.linspace(0, L, N)  # Spatial grid
+x = np.linspace(0, L, N)  # x-values
 
 # Initial velocity field
 u = np.zeros(N)
@@ -85,3 +87,5 @@ def update(frame):
 ani = FuncAnimation(fig, update, frames=range(time_steps), blit=True)
 
 plt.show()
+
+#The animation didn't work out as I wanted, but I tried.
