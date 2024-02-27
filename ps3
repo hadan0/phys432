@@ -1,0 +1,87 @@
+"""
+Created on Thu Jan 25 16:04:23 2024
+
+@author: hadan
+"""
+
+# Modules
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
+
+# Parameters
+L = 10.0  # Length of the domain
+N = 100  # Number of points
+dx = L / (N - 1)  # Step size
+nu = 10**3  # Kinematic viscosity
+g = 9.81  # Acceleration due to gravity
+theta = np.pi / 6  # Slope angle 
+dt = 0.001  # Time step size
+H = 1.0  # Thickness of the lava layer
+
+x = np.linspace(0, L, N)  # Spatial grid
+
+# Initial velocity field
+u = np.zeros(N)
+
+# Steady-state solution
+def steady_state(x, g, theta, nu, H):
+    return -g/nu * np.sin(theta) * (0.5*x**2 - H*x)
+
+# Defining boundary conditions on the velocity
+def apply_boundary_conditions(u):
+    u[0] = 0  # No-slip condition at x=0
+    u[-1] = u[-2]  # No-stress condition at x=L 
+    return u
+
+# Updating velocity field using Crank-Nicolson's method
+def crank_nicolson_step(u, nu, dx, dt, g, theta):
+    A = np.zeros((N, N))
+    b = np.zeros(N)
+    beta = nu * dt / dx**2
+    
+    for i in range(1, N-1): # Constructing the matrix and the velocity vector
+        A[i, i-1] = -beta
+        A[i, i] = 1 + 2*beta
+        A[i, i+1] = -beta
+        b[i] = u[i] + dt * g * np.sin(theta)  
+
+    # Boundary conditions
+    A[0, 0] = 1  # No-slip condition
+    A[0, 1] = 0
+    A[-1, -1] = 1 + beta # No-stress condition
+    
+    u_new = np.linalg.solve(A, b)
+    return apply_boundary_conditions(u_new)
+
+# Simulation parameters
+total_time = 2.0  # Total simulation time
+time_steps = int(total_time / dt)
+
+# Storage for plotting
+u_store = np.zeros((time_steps, N))
+
+# Simulation
+for n in range(time_steps):
+    u = crank_nicolson_step(u, nu, dx, dt, g, theta)
+    u_store[n] = u
+
+# Animating the results
+fig, ax = plt.subplots()
+line, = ax.plot(x, u_store[0], label='Numerical Solution')
+ax.plot(x, steady_state(x, g, theta, nu, H), 'r--', label='Steady-State')
+ax.set_xlabel('Position (x)')
+ax.set_ylabel('Velocity (u)')
+ax.legend()
+
+# Y-axis bounds
+ax.set_ylim([-0.2, 0.12])  
+
+def update(frame):
+    line.set_ydata(u_store[frame])
+    return line,
+
+ani = FuncAnimation(fig, update, frames=range(time_steps), blit=True)
+
+plt.show()
