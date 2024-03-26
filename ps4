@@ -1,0 +1,78 @@
+"""
+Created on Sun Mar 24 01:00:14 2024
+
+@author: hadan
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constants and simulation parameters
+gamma = 5.0 / 3.0  # Adiabatic index for ideal gas
+cs = 1.0  # Sound speed
+L = 1.0  # Length of the domain
+N = 200  # Number of grid points
+dx = L / N  # Spatial resolution
+dt = 0.001  # Initial time step size
+time_steps = 500  # Total number of time steps for the simulation
+
+# Initial conditions with Gaussian perturbation in density
+x = np.linspace(0 + dx / 2, L - dx / 2, N)  # Cell centers
+rho = np.ones(N)  # Initial uniform density
+u = np.zeros(N)  # Initial velocity at rest
+
+# Applying a Gaussian perturbation in density
+amplitude = 0.1
+center = L / 2
+width = 0.1
+rho += amplitude * np.exp(-((x - center) ** 2) / (2 * width**2))
+
+def compute_fluxes(rho, u, cs):
+    "Compute fluxes for density and momentum."
+    flux_rho = rho * u
+    flux_momentum = rho * u**2 + cs**2 * rho
+    return flux_rho, flux_momentum
+
+def simple_update(rho, u, flux_rho, flux_momentum, dx, dt):
+    "Update the density and velocity fields for one time step."
+    rho_new = np.zeros_like(rho)
+    u_new = np.zeros_like(u)
+    
+    # Calculate the flux differences for interior cells and apply to updates
+    rho_new[1:-1] = rho[1:-1] - dt / dx * (flux_rho[1:-1] - flux_rho[:-2])
+    momentum_new = rho[1:-1] * u[1:-1] - dt / dx * (flux_momentum[1:-1] - flux_momentum[:-2])
+    
+    # Prevent division by zero in velocity update
+    with np.errstate(divide='ignore', invalid='ignore'):
+        u_new[1:-1] = np.where(rho_new[1:-1] != 0, momentum_new / rho_new[1:-1], 0)
+    
+    # Reflective boundary conditions for velocity
+    u_new[0] = -u_new[1]
+    u_new[-1] = -u_new[-2]
+    
+    return rho_new, u_new
+
+# Interactive plotting
+plt.ion()
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+
+for step in range(1, time_steps + 1):
+    flux_rho, flux_momentum = compute_fluxes(rho, u, cs)
+    rho, u = simple_update(rho, u, flux_rho, flux_momentum, dx, dt)
+
+    if step % 50 == 0:  # Visualization update every 50 steps
+        ax1.clear()
+        ax2.clear()
+        
+        ax1.plot(x, rho, '-b', label='Density')
+        ax1.set_ylabel('Density')
+        ax1.legend()
+        
+        ax2.plot(x, u, '-r', label='Velocity')
+        ax2.set_xlabel('Position')
+        ax2.set_ylabel('Velocity')
+        ax2.legend()
+        
+        plt.pause(0.5)  
+
+plt.ioff()  
+plt.show()
